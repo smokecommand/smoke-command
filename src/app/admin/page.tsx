@@ -858,9 +858,122 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* ── PLACEHOLDERS ── */}
+          {/* ── JOBS ── */}
           {activeTab === 'jobs' && (
-            <ComingSoon icon="📋" title="Job Pipeline" desc="Create, assign, and track restoration jobs from intake to completion." />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                <div>
+                  <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: '800' }}>Job Pipeline</h2>
+                  <p style={{ margin: 0, fontSize: '13px', color: C.muted }}>Active restoration jobs across all districts.</p>
+                </div>
+                <a href="/jobs/new" style={{
+                  padding: '10px 18px', background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
+                  border: 'none', borderRadius: '8px', color: 'white',
+                  fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                }}>
+                  + New Job
+                </a>
+              </div>
+
+              {/* Summary stats */}
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Active Jobs', value: 3, color: C.accent },
+                  { label: 'Pending Payment', value: 1, color: C.warning },
+                  { label: 'In Progress', value: 1, color: '#60a5fa' },
+                  { label: 'Total Value', value: '$133,350', color: C.success, wide: true },
+                ].map(s => (
+                  <div key={s.label} style={{
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+                    padding: '14px 18px',
+                  }}>
+                    <div style={{ fontSize: '22px', fontWeight: '800', color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: '11px', color: C.muted, marginTop: '2px' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Job list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  {
+                    id: 'mock-1', street: '1842 Oak Dr', city: 'Pasadena',
+                    owner: 'Maria Santos', carrier: 'State Farm', claim: 'SF-2024-88421',
+                    stage: 2, stageName: 'Site Assessment', value: '$28,400', days: 3,
+                    stageColor: '#60a5fa', stageBg: 'rgba(59,130,246,0.12)', stageBorder: 'rgba(59,130,246,0.3)',
+                  },
+                  {
+                    id: 'mock-2', street: '504 Oleander Ave', city: 'La Marque',
+                    owner: 'Robert Tran', carrier: 'Allstate', claim: 'ALL-2024-55193',
+                    stage: 5, stageName: 'Awaiting Payment', value: '$41,750', days: 11,
+                    stageColor: C.accent, stageBg: 'rgba(249,115,22,0.12)', stageBorder: 'rgba(249,115,22,0.3)',
+                  },
+                  {
+                    id: 'mock-3', street: '2217 Bayou Rd', city: 'Texas City',
+                    owner: 'James Kelley', carrier: 'USAA', claim: 'USAA-2024-31087',
+                    stage: 6, stageName: 'Heavy Clean', value: '$63,200', days: 7,
+                    stageColor: C.danger, stageBg: 'rgba(239,68,68,0.12)', stageBorder: 'rgba(239,68,68,0.3)',
+                  },
+                ].map(job => (
+                  <div key={job.id} style={{
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: '12px',
+                    padding: '18px 22px', display: 'flex', alignItems: 'center', gap: '18px',
+                  }}>
+                    {/* Stage badge */}
+                    <div style={{
+                      width: '40px', height: '40px', borderRadius: '10px',
+                      background: job.stageBg, border: `1px solid ${job.stageBorder}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '17px', fontWeight: '800', color: job.stageColor, flexShrink: 0,
+                    }}>
+                      {job.stage}
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '700' }}>{job.street}, {job.city}</span>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '99px', fontSize: '10px', fontWeight: '700',
+                          background: job.stageBg, color: job.stageColor, border: `1px solid ${job.stageBorder}`,
+                        }}>
+                          {job.stage} · {job.stageName}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: C.muted, flexWrap: 'wrap' }}>
+                        <span>👤 {job.owner}</span>
+                        <span>🏢 {job.carrier} · {job.claim}</span>
+                        <span>📅 {job.days} days on job</span>
+                      </div>
+                    </div>
+
+                    {/* Value */}
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: C.accent }}>{job.value}</div>
+                      <div style={{ fontSize: '11px', color: C.muted }}>approved</div>
+                    </div>
+
+                    {/* Open */}
+                    <a href={`/jobs/${job.id}`} style={{
+                      padding: '8px 16px', background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
+                      borderRadius: '8px', color: 'white', textDecoration: 'none',
+                      fontSize: '13px', fontWeight: '700', flexShrink: 0, whiteSpace: 'nowrap',
+                    }}>
+                      Open →
+                    </a>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                <a href="/jobs" style={{
+                  fontSize: '13px', color: C.accent, textDecoration: 'none', fontWeight: '600',
+                }}>
+                  View all jobs in full Job Management →
+                </a>
+              </div>
+            </div>
           )}
           {activeTab === 'crew' && (
             <ComingSoon icon="👥" title="Crew & Dispatch" desc="Manage crew assignments, availability, and dispatch scheduling." />
