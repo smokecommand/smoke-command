@@ -5,63 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { FireLead, FireLeadStatus } from '@/lib/supabase'
 
-// Mock data for Houston district until Blaze pipeline is wired
-const MOCK_LEADS: FireLead[] = [
-  {
-    id: '1',
-    fire_name: 'Pasadena Warehouse Fire',
-    incident_date: '2026-06-21',
-    location: 'Pasadena, TX',
-    lat: 29.6911,
-    lng: -95.2091,
-    neighborhoods: ['Deer Park', 'Shoreacres', 'La Porte'],
-    wind_direction: 'SW → NE',
-    news_links: ['https://abc13.com'],
-    air_quality_data: 'PM2.5 peaked at 4.2x safe levels',
-    status: 'in_progress',
-    district_id: 'houston-south',
-    assigned_to: null,
-    doors_knocked: 47,
-    doors_total: 120,
-    created_at: '2026-06-21T14:30:00Z',
-  },
-  {
-    id: '2',
-    fire_name: 'Galena Park Industrial',
-    incident_date: '2026-06-18',
-    location: 'Galena Park, TX',
-    lat: 29.7358,
-    lng: -95.2316,
-    neighborhoods: ['Jacinto City', 'Galena Park', 'Channelview'],
-    wind_direction: 'N → S',
-    news_links: ['https://khou.com'],
-    air_quality_data: 'PM2.5 2.8x safe levels; AQI 167 (Unhealthy)',
-    status: 'new',
-    district_id: 'houston-south',
-    assigned_to: null,
-    doors_knocked: 0,
-    doors_total: 85,
-    created_at: '2026-06-18T09:15:00Z',
-  },
-  {
-    id: '3',
-    fire_name: 'Texas City Refinery',
-    incident_date: '2026-06-15',
-    location: 'Texas City, TX',
-    lat: 29.3838,
-    lng: -94.9027,
-    neighborhoods: ['14th–34th St Zone', 'La Marque', 'Dickinson'],
-    wind_direction: 'SE → NW',
-    news_links: [],
-    air_quality_data: 'PM2.5 3.1x safe levels',
-    status: 'closed',
-    district_id: 'houston-south',
-    assigned_to: null,
-    doors_knocked: 112,
-    doors_total: 112,
-    created_at: '2026-06-15T11:00:00Z',
-  },
-]
+// Real data only — loaded from Supabase
 
 const STATUS_CONFIG: Record<FireLeadStatus, { label: string; color: string; bg: string; dot: string }> = {
   new: { label: '🟢 New', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', dot: '#22c55e' },
@@ -94,7 +38,7 @@ function ProgressBar({ knocked, total }: { knocked: number; total: number }) {
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ email: string } | null>(null)
-  const [leads, setLeads] = useState<FireLead[]>(MOCK_LEADS)
+  const [leads, setLeads] = useState<FireLead[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FireLeadStatus | 'all'>('all')
 
@@ -107,16 +51,13 @@ export default function DashboardPage() {
       }
       setUser({ email: session.user.email || '' })
 
-      // Try to fetch real leads from Supabase (falls back to mock data if table doesn't exist yet)
-      try {
-        const { data } = await supabase
-          .from('fire_leads')
-          .select('*')
-          .order('created_at', { ascending: false })
-        if (data && data.length > 0) setLeads(data)
-      } catch {
-        // Using mock data
-      }
+      // Fetch real leads from Supabase
+      const { data, error } = await supabase
+        .from('fire_leads')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (data) setLeads(data)
+      if (error) console.error('Failed to load leads:', error.message)
       setLoading(false)
     }
     checkAuth()
@@ -132,7 +73,7 @@ export default function DashboardPage() {
   const stats = {
     active: leads.filter(l => l.status !== 'closed').length,
     doorsKnocked: leads.reduce((a, l) => a + l.doors_knocked, 0),
-    inspectionsSet: 3, // mock — wire to actual data later
+    inspectionsSet: leads.filter(l => l.status === 'in_progress' || l.status === 'closed').length,
     jobsClosed: leads.filter(l => l.status === 'closed').length,
   }
 
@@ -183,8 +124,9 @@ export default function DashboardPage() {
       </nav>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
-        {/* New fire alert banner */}
-        <div style={{
+        {/* New fire alert banner — shows most urgent unassigned lead */}
+        {leads.filter(l => l.status === 'new').slice(0, 1).map(urgentLead => (
+        <div key={urgentLead.id} style={{
           padding: '14px 20px',
           background: 'rgba(239, 68, 68, 0.1)',
           border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -200,7 +142,7 @@ export default function DashboardPage() {
               NEW FIRE DETECTED — Canvass window is OPEN NOW
             </div>
             <div style={{ fontSize: '13px', color: '#a1a1aa', marginTop: '2px' }}>
-              Galena Park Industrial — Jun 18 · Neighborhoods: Jacinto City, Channelview, Galena Park
+              {urgentLead.fire_name} — {new Date(urgentLead.incident_date).toLocaleDateString('en-US', {month:'short', day:'numeric'})} · Neighborhoods: {urgentLead.neighborhoods?.slice(0,3).join(', ')}
             </div>
           </div>
           <button style={{
@@ -218,6 +160,7 @@ export default function DashboardPage() {
             Open Lead →
           </button>
         </div>
+        ))}
 
         {/* Stat cards */}
         <div style={{
@@ -359,7 +302,21 @@ export default function DashboardPage() {
                     color: '#ca8a04',
                     marginBottom: '16px',
                   }}>
-                    📊 {lead.air_quality_data}
+                    📊 {(() => {
+                      const aq = lead.air_quality_data
+                      if (!aq) return null
+                      if (typeof aq === 'string') return aq
+                      const aqi = aq.peak_aqi ?? aq.aqi
+                      const pm25 = aq.pm25
+                      const level = aq.alert_level ?? aq.level
+                      const sip = aq.shelter_in_place
+                      return [
+                        aqi ? `AQI: ${aqi}` : null,
+                        pm25 ? `PM2.5: ${pm25} µg/m³` : null,
+                        level ? level : null,
+                        sip ? '⚠️ Shelter-in-Place' : null,
+                      ].filter(Boolean).join(' · ')
+                    })()}
                   </div>
                 )}
 
