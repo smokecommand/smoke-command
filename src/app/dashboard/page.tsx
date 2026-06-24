@@ -421,7 +421,42 @@ export default function DashboardPage() {
 
           {/* ── OTHER TABS ── */}
           {activeTab === 'my_jobs' && (
-            <ComingSoon icon="🔨" title="My Jobs" desc="View and update your assigned restoration jobs." />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                <div>
+                  <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: '800' }}>My Jobs</h2>
+                  <p style={{ margin: 0, fontSize: '13px', color: C.muted }}>Your assigned restoration jobs.</p>
+                </div>
+                <a href="/jobs" style={{
+                  padding: '10px 18px', background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
+                  border: 'none', borderRadius: '8px', color: 'white',
+                  fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                }}>
+                  📋 Open Job Manager →
+                </a>
+              </div>
+              <div style={{
+                background: C.surface, border: `1px solid ${C.border}`, borderRadius: '12px',
+                padding: '40px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔨</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>Job Pipeline</div>
+                <div style={{ fontSize: '13px', color: C.muted, marginBottom: '20px' }}>
+                  View and manage your assigned restoration jobs in the full job manager.
+                </div>
+                <a href="/jobs" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '10px 20px',
+                  background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
+                  border: 'none', borderRadius: '8px', color: 'white',
+                  fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                  cursor: 'pointer',
+                }}>
+                  Open Job Manager →
+                </a>
+              </div>
+            </div>
           )}
           {activeTab === 'door_log' && (
             <ComingSoon icon="🚪" title="Door Log" desc="Log every door knocked, conversation, and callback note." />

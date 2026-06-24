@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import type { UserRole } from '@/lib/supabase'
+import type { UserRole, Job, JobStatus } from '@/lib/supabase'
 
 // ─── Color tokens ──────────────────────────────────────────────────────────
 const C = {
@@ -34,6 +34,13 @@ interface ComplianceItem {
   status: ComplianceStatus
   dueDate: string
   assignedTo: string
+}
+
+interface JobStats {
+  total: number
+  active: number
+  pipelineValue: number
+  byStatus: Record<string, number>
 }
 
 interface DistrictStat {
@@ -312,6 +319,7 @@ export default function AdminPage() {
   })
   const [inviteMsg, setInviteMsg] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [jobStats, setJobStats] = useState<JobStats | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -322,6 +330,25 @@ export default function AdminPage() {
         .from('profiles').select('role').eq('id', user.id).single()
       if (!profile || profile.role !== 'master_admin') {
         router.push('/dashboard'); return
+      }
+
+      // Load job stats
+      const { data: jobRows } = await supabase.from('jobs').select('status, xactimate_estimate')
+      if (jobRows) {
+        const byStatus: Record<string, number> = {}
+        let pipelineValue = 0
+        for (const j of jobRows) {
+          byStatus[j.status] = (byStatus[j.status] ?? 0) + 1
+          if (j.status !== 'closed' && j.status !== 'cancelled') {
+            pipelineValue += j.xactimate_estimate ?? 0
+          }
+        }
+        setJobStats({
+          total: jobRows.length,
+          active: jobRows.filter(j => j.status !== 'closed' && j.status !== 'cancelled').length,
+          pipelineValue,
+          byStatus,
+        })
       }
 
       const { data: districtRows } = await supabase.from('districts').select('*')
