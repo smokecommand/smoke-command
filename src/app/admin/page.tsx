@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import type { UserRole, Job, JobStatus } from '@/lib/supabase'
+import type { UserRole, Job, JobStatus, Lead, LeadStatus, LossReason } from '@/lib/supabase'
 
 // ─── Color tokens ──────────────────────────────────────────────────────────
 const C = {
@@ -320,6 +320,7 @@ export default function AdminPage() {
   const [inviteMsg, setInviteMsg] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [jobStats, setJobStats] = useState<JobStats | null>(null)
+  const [adminLeads, setAdminLeads] = useState<Lead[]>([])
 
   useEffect(() => {
     const init = async () => {
@@ -368,6 +369,10 @@ export default function AdminPage() {
         )
         setDistricts(stats)
       }
+      // Load leads for Sales tab
+      const { data: leadRows } = await supabase.from('leads').select('*').order('created_at', { ascending: false })
+      if (leadRows) setAdminLeads(leadRows as Lead[])
+
       setLoading(false)
     }
     init()
@@ -844,46 +849,121 @@ export default function AdminPage() {
           )}
 
           {/* ── SALES & LEADS ── */}
-          {activeTab === 'sales' && (
-            <div>
-              <div style={{ marginBottom: '24px' }}>
-                <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: '800' }}>Sales & Leads</h2>
-                <p style={{ margin: 0, fontSize: '13px', color: C.muted }}>Monitor active fire lead pipeline across all districts.</p>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-                <a href="/dashboard" target="_blank" rel="noopener noreferrer" style={{
-                  padding: '10px 18px', background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
-                  border: 'none', borderRadius: '8px', color: 'white',
-                  fontSize: '13px', fontWeight: '700', textDecoration: 'none',
-                  display: 'inline-flex', alignItems: 'center', gap: '6px',
-                }}>
-                  🔥 Open Sales Dashboard →
-                </a>
-              </div>
-              <div style={{
-                background: C.surface, border: `1px solid ${C.border}`, borderRadius: '12px',
-                padding: '32px', textAlign: 'center',
-              }}>
-                <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔥</div>
-                <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>Fire Lead Pipeline</div>
-                <div style={{ fontSize: '13px', color: C.muted, marginBottom: '20px' }}>
-                  View live leads, canvass windows, and neighborhood coverage in the sales dashboard.
+          {activeTab === 'sales' && (() => {
+            const now = Date.now()
+            const weekMs = 7 * 24 * 60 * 60 * 1000
+            const monthMs = 30 * 24 * 60 * 60 * 1000
+            const signed = adminLeads.filter(l => l.status === 'signed')
+            const lost = adminLeads.filter(l => l.status === 'lost')
+            const active = adminLeads.filter(l => l.status === 'active')
+            const thisWeek = adminLeads.filter(l => new Date(l.created_at).getTime() > now - weekMs)
+            const thisMonth = adminLeads.filter(l => new Date(l.created_at).getTime() > now - monthMs)
+            const convRate = adminLeads.length > 0 ? Math.round((signed.length / adminLeads.length) * 100) : 0
+
+            // Loss breakdown
+            const lossBreakdown = lost.reduce<Record<string, number>>((acc, l) => {
+              const r = l.loss_reason ?? 'other'
+              acc[r] = (acc[r] ?? 0) + 1
+              return acc
+            }, {})
+            const topLossReasons = Object.entries(lossBreakdown).sort((a, b) => b[1] - a[1]).slice(0, 3)
+
+            const LOSS_LABELS: Record<LossReason, string> = {
+              declined: 'Declined', no_insurance: 'No Insurance', carrier_denied: 'Carrier Denied',
+              competitor: 'Competitor Signed', couldnt_reach: "Couldn't Reach", other: 'Other',
+            }
+
+            return (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                  <div>
+                    <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: '800' }}>Sales & Leads</h2>
+                    <p style={{ margin: 0, fontSize: '13px', color: C.muted }}>Rep accountability — leads tracked, contracts signed, losses analyzed.</p>
+                  </div>
+                  <a href="/leads" style={{
+                    padding: '10px 18px', background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
+                    border: 'none', borderRadius: '8px', color: 'white',
+                    fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  }}>
+                    🎯 Open Leads Pipeline →
+                  </a>
                 </div>
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+
+                {/* KPI grid */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
                   {[
-                    { label: 'Total New Leads', value: districts.reduce((a, d) => a + d.leads_new, 0), color: C.warning },
-                    { label: 'In Progress', value: districts.reduce((a, d) => a + d.leads_in_progress, 0), color: C.accent },
-                    { label: 'Closed', value: districts.reduce((a, d) => a + d.leads_closed, 0), color: C.success },
-                  ].map(s => (
-                    <div key={s.label} style={{ background: C.bg, borderRadius: '10px', padding: '16px 20px' }}>
-                      <div style={{ fontSize: '28px', fontWeight: '800', color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: '11px', color: C.muted }}>{s.label}</div>
+                    { label: 'Total Leads', value: adminLeads.length, color: C.text },
+                    { label: 'Active', value: active.length, color: '#3b82f6' },
+                    { label: 'Signed This Month', value: thisMonth.filter(l => l.status === 'signed').length, color: C.success },
+                    { label: 'Lost', value: lost.length, color: C.danger },
+                    { label: 'New This Week', value: thisWeek.length, color: C.accent },
+                    { label: 'Conversion Rate', value: `${convRate}%`, color: convRate > 20 ? C.success : convRate > 10 ? C.warning : C.danger },
+                  ].map((s, i) => (
+                    <div key={i} style={{
+                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+                      padding: '16px 20px', minWidth: '120px',
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: '800', color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{s.label}</div>
                     </div>
                   ))}
                 </div>
+
+                {/* Top loss reasons */}
+                {topLossReasons.length > 0 && (
+                  <div style={{
+                    background: C.surface, border: `1px solid ${C.border}`,
+                    borderRadius: '12px', padding: '22px', marginBottom: '20px',
+                  }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: C.muted, letterSpacing: '0.08em', marginBottom: '14px' }}>TOP 3 LOSS REASONS</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {topLossReasons.map(([reason, count]) => {
+                        const pct = lost.length > 0 ? Math.round((count / lost.length) * 100) : 0
+                        return (
+                          <div key={reason}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <span style={{ fontSize: '13px', color: C.text }}>{LOSS_LABELS[reason as LossReason] ?? reason}</span>
+                              <span style={{ fontSize: '12px', color: C.muted }}>{count} leads ({pct}%)</span>
+                            </div>
+                            <div style={{ height: '6px', background: C.border, borderRadius: '99px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: C.danger, borderRadius: '99px' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fire lead pipeline from districts */}
+                <div style={{
+                  background: C.surface, border: `1px solid ${C.border}`, borderRadius: '12px',
+                  padding: '22px',
+                }}>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: C.muted, letterSpacing: '0.08em', marginBottom: '14px' }}>FIRE LEAD PIPELINE (BY DISTRICT)</div>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'New Fire Leads', value: districts.reduce((a, d) => a + d.leads_new, 0), color: C.warning },
+                      { label: 'In Progress', value: districts.reduce((a, d) => a + d.leads_in_progress, 0), color: C.accent },
+                      { label: 'Closed', value: districts.reduce((a, d) => a + d.leads_closed, 0), color: C.success },
+                      { label: 'Doors Knocked', value: districts.reduce((a, d) => a + d.doors_knocked, 0), color: C.text },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: C.bg, borderRadius: '10px', padding: '16px 20px', flex: 1 }}>
+                        <div style={{ fontSize: '28px', fontWeight: '800', color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: '11px', color: C.muted }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '16px' }}>
+                    <a href="/dashboard" style={{ fontSize: '13px', color: C.accent, textDecoration: 'none', fontWeight: '600' }}>
+                      🔥 Open Sales Dashboard →
+                    </a>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* ── JOBS ── */}
           {activeTab === 'jobs' && (

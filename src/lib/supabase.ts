@@ -43,6 +43,48 @@ export type PhaseLogEntry = {
   note: string
 }
 
+// ─── Checklist Types ─────────────────────────────────────────────────────
+export type ChecklistItemType = 'check' | 'doc'
+
+export type ChecklistItem = {
+  id: string
+  text: string
+  done: boolean
+  type: ChecklistItemType
+  docOptions?: string[]
+}
+
+export type StageChecklists = Partial<Record<string, ChecklistItem[]>>
+
+// ─── Lead Types ───────────────────────────────────────────────────────────
+export type LeadSource = 'canvassing' | 'referral' | 'fire_lead' | 'other'
+export type LeadStatus = 'active' | 'signed' | 'lost'
+export type LossReason = 'declined' | 'no_insurance' | 'carrier_denied' | 'competitor' | 'couldnt_reach' | 'other'
+
+export type Touchpoint = {
+  date: string
+  type: string
+  notes: string
+}
+
+export type Lead = {
+  id: string
+  district_id: string | null
+  created_by: string | null
+  homeowner_name: string
+  property_address: string
+  phone: string | null
+  date_contacted: string | null
+  source: LeadSource
+  status: LeadStatus
+  loss_reason: LossReason | null
+  notes: string | null
+  touchpoints: Touchpoint[]
+  converted_job_id: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type Job = {
   id: string
   job_number: string
@@ -94,6 +136,7 @@ export type Job = {
   // Meta
   notes: string | null
   phase_log: PhaseLogEntry[]
+  stage_checklists: StageChecklists
   created_by: string | null
   created_at: string
   updated_at: string
