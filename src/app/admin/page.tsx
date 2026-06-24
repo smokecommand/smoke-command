@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import type { UserRole } from '@/lib/supabase'
+import type { UserRole, Job, JobStatus } from '@/lib/supabase'
 
 // ─── Color tokens ──────────────────────────────────────────────────────────
 const C = {
@@ -34,6 +34,13 @@ interface ComplianceItem {
   status: ComplianceStatus
   dueDate: string
   assignedTo: string
+}
+
+interface JobStats {
+  total: number
+  active: number
+  pipelineValue: number
+  byStatus: Record<string, number>
 }
 
 interface DistrictStat {
@@ -312,6 +319,7 @@ export default function AdminPage() {
   })
   const [inviteMsg, setInviteMsg] = useState('')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [jobStats, setJobStats] = useState<JobStats | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -322,6 +330,25 @@ export default function AdminPage() {
         .from('profiles').select('role').eq('id', user.id).single()
       if (!profile || profile.role !== 'master_admin') {
         router.push('/dashboard'); return
+      }
+
+      // Load job stats
+      const { data: jobRows } = await supabase.from('jobs').select('status, xactimate_estimate')
+      if (jobRows) {
+        const byStatus: Record<string, number> = {}
+        let pipelineValue = 0
+        for (const j of jobRows) {
+          byStatus[j.status] = (byStatus[j.status] ?? 0) + 1
+          if (j.status !== 'closed' && j.status !== 'cancelled') {
+            pipelineValue += j.xactimate_estimate ?? 0
+          }
+        }
+        setJobStats({
+          total: jobRows.length,
+          active: jobRows.filter(j => j.status !== 'closed' && j.status !== 'cancelled').length,
+          pipelineValue,
+          byStatus,
+        })
       }
 
       const { data: districtRows } = await supabase.from('districts').select('*')
@@ -860,7 +887,85 @@ export default function AdminPage() {
 
           {/* ── PLACEHOLDERS ── */}
           {activeTab === 'jobs' && (
-            <ComingSoon icon="📋" title="Job Pipeline" desc="Create, assign, and track restoration jobs from intake to completion." />
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                <div>
+                  <h2 style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: '800' }}>Job Pipeline</h2>
+                  <p style={{ margin: 0, fontSize: '13px', color: C.muted }}>Active restoration jobs across all districts.</p>
+                </div>
+                <a href="/jobs" style={{
+                  padding: '10px 18px', background: `linear-gradient(135deg, ${C.accent}, ${C.danger})`,
+                  border: 'none', borderRadius: '8px', color: 'white',
+                  fontSize: '13px', fontWeight: '700', textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                }}>
+                  📋 Open Job Manager →
+                </a>
+              </div>
+
+              {/* KPI cards */}
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Total Jobs', value: jobStats?.total ?? 0, color: C.text },
+                  { label: 'Active Jobs', value: jobStats?.active ?? 0, color: C.accent },
+                  { label: 'Pipeline Value', value: jobStats ? '$' + jobStats.pipelineValue.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—', color: C.success },
+                  { label: 'Closed', value: jobStats?.byStatus['closed'] ?? 0, color: C.muted },
+                ].map((s, i) => (
+                  <div key={i} style={{
+                    background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+                    padding: '16px 22px', minWidth: '130px',
+                  }}>
+                    <div style={{ fontSize: typeof s.value === 'number' ? '28px' : '20px', fontWeight: '800', color: s.color, letterSpacing: '-0.5px' }}>
+                      {s.value}
+                    </div>
+                    <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Stage breakdown */}
+              {jobStats && (
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: '12px', padding: '22px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '16px' }}>Jobs by Stage</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {([
+                      { status: 'inspection_scheduled', label: '📅 Inspection Scheduled', color: '#3b82f6' },
+                      { status: 'scope_written', label: '📝 Scope Written', color: '#8b5cf6' },
+                      { status: 'work_auth_signed', label: '✅ Work Auth Signed', color: '#f97316' },
+                      { status: 'equipment_in', label: '🚛 Equipment In', color: '#eab308' },
+                      { status: 'mitigation_active', label: '🧹 Mitigation Active', color: '#22c55e' },
+                      { status: 'hygienist_clearance', label: '🔬 Hygienist Clearance', color: '#06b6d4' },
+                      { status: 'reconstruction', label: '🏗️ Reconstruction', color: '#f97316' },
+                      { status: 'billing', label: '💰 Billing', color: '#a855f7' },
+                      { status: 'closed', label: '✔️ Closed', color: '#71717a' },
+                    ] as { status: string; label: string; color: string }[]).map(s => {
+                      const count = jobStats.byStatus[s.status] ?? 0
+                      const maxCount = Math.max(...Object.values(jobStats.byStatus), 1)
+                      return (
+                        <div key={s.status} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '180px', fontSize: '12px', color: C.muted, flexShrink: 0 }}>{s.label}</div>
+                          <div style={{ flex: 1, height: '6px', background: C.border, borderRadius: '99px', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', width: `${count > 0 ? (count / maxCount) * 100 : 0}%`,
+                              background: s.color, borderRadius: '99px', transition: 'width 0.3s',
+                            }} />
+                          </div>
+                          <div style={{ width: '24px', textAlign: 'right', fontSize: '13px', fontWeight: '700', color: count > 0 ? C.text : C.muted }}>
+                            {count}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!jobStats && (
+                <div style={{ padding: '48px', textAlign: 'center', background: C.surface, border: `1px solid ${C.border}`, borderRadius: '12px', color: C.muted, fontSize: '14px' }}>
+                  No jobs yet. <a href="/jobs" style={{ color: C.accent }}>Create the first job →</a>
+                </div>
+              )}
+            </div>
           )}
           {activeTab === 'crew' && (
             <ComingSoon icon="👥" title="Crew & Dispatch" desc="Manage crew assignments, availability, and dispatch scheduling." />
