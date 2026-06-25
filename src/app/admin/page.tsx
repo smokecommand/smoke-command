@@ -1083,7 +1083,12 @@ export default function AdminPage() {
             </div>
           )}
           {activeTab === 'crew' && (
-            <ComingSoon icon="👥" title="Crew & Dispatch" desc="Manage crew assignments, availability, and dispatch scheduling." />
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: 40, marginBottom: 16 }}>👥</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Crew & Dispatch</h3>
+              <p style={{ color: C.muted, fontSize: 14, marginBottom: 24 }}>Assign crews to active jobs, track availability, and manage daily dispatch.</p>
+              <button onClick={() => router.push('/crew')} style={{ padding: '12px 28px', background: `linear-gradient(135deg,${C.accent},#ea580c)`, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Open Crew Manager →</button>
+            </div>
           )}
           {activeTab === 'payments' && (
             <ComingSoon icon="💰" title="Payments" desc="Track invoices, insurance claims, and payment collections." />
