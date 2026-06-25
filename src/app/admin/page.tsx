@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { UserRole, Job, JobStatus, Lead, LeadStatus, LossReason } from '@/lib/supabase'
+import NotificationBell from '@/components/NotificationBell'
 
 // ─── Color tokens ──────────────────────────────────────────────────────────
 const C = {
@@ -543,6 +544,7 @@ export default function AdminPage() {
           </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: C.muted }}>🟢 Live</span>
+            <NotificationBell />
           </div>
         </div>
 
