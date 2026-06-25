@@ -1403,9 +1403,21 @@ export default function JobsPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all')
 
-  const loadJobs = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('jobs').select('*').order('created_at', { ascending: false })
+  const [userRole, setUserRole] = useState<string>('sales_rep')
+  const [userDistrictId, setUserDistrictId] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const loadJobs = useCallback(async (role: string, districtId: string | null, uid: string | null) => {
+    let query = supabase.from('jobs').select('*').order('created_at', { ascending: false })
+    // master_admin sees everything; others scoped to their district
+    if (role !== 'master_admin' && districtId) {
+      query = query.eq('district_id', districtId)
+    }
+    // techs only see jobs assigned to them
+    if (role === 'tech' && uid) {
+      query = query.contains('assigned_crew', [uid])
+    }
+    const { data, error } = await query
     if (data) setJobs(data as Job[])
     if (error) console.error('Failed to load jobs:', error.message)
   }, [])
@@ -1414,7 +1426,13 @@ export default function JobsPage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      await loadJobs()
+      const { data: profile } = await supabase.from('profiles').select('role,district_id').eq('id', user.id).single()
+      const role = profile?.role ?? 'sales_rep'
+      const districtId = profile?.district_id ?? null
+      setUserRole(role)
+      setUserDistrictId(districtId)
+      setUserId(user.id)
+      await loadJobs(role, districtId, user.id)
       setLoading(false)
     }
     init()
