@@ -27,6 +27,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var t = localStorage.getItem('sc-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+          } catch(e) {}
+        ` }} />
       </head>
       <body style={{ margin: 0, minHeight: '100vh', background: '#0f1117', color: '#f4f4f5' }}>
         <PWARegister />

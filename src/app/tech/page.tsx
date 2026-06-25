@@ -159,8 +159,6 @@ export default function TechPage() {
   const checklistItems: any[] = stageKey ? (selectedJob.stage_checklists?.[stageKey] ?? []) : []
   const done = checklistItems.filter(i => i.done).length
   const total = checklistItems.length
-  const fileInputRef = { current: null as HTMLInputElement | null }
-
   return (
     <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'system-ui,sans-serif', paddingBottom: 80 }}>
       {/* Header */}

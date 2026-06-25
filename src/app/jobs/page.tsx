@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import ThemeToggle from '@/components/ThemeToggle'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { Job, JobStatus, PhaseLogEntry, ChecklistItem, StageChecklists } from '@/lib/supabase'
@@ -1743,6 +1744,7 @@ export default function JobsPage() {
                 </button>
               </>
             )}
+            <ThemeToggle />
           </div>
         </div>
 

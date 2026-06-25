@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { FireLead, FireLeadStatus } from '@/lib/supabase'
+import ThemeToggle from '@/components/ThemeToggle'
 
 // ─── Color tokens ───────────────────────────────────────────────────────────
 const C = {
@@ -239,8 +240,9 @@ export default function DashboardPage() {
             {navItems.find(i => i.tab === activeTab)?.icon}&nbsp;
             {navItems.find(i => i.tab === activeTab)?.label}
           </div>
-          <div style={{ fontSize: '12px', color: C.muted }}>
-            Houston South District
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: C.muted }}>Houston South District</span>
+            <ThemeToggle />
           </div>
         </div>
 

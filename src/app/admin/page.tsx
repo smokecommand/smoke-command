@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { UserRole, Job, JobStatus, Lead, LeadStatus, LossReason } from '@/lib/supabase'
 import NotificationBell from '@/components/NotificationBell'
+import ThemeToggle from '@/components/ThemeToggle'
 
 // ─── Color tokens ──────────────────────────────────────────────────────────
 const C = {
@@ -545,6 +546,7 @@ export default function AdminPage() {
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <span style={{ fontSize: '12px', color: C.muted }}>🟢 Live</span>
             <NotificationBell />
+            <ThemeToggle />
           </div>
         </div>
 
@@ -1092,9 +1094,8 @@ export default function AdminPage() {
               <button onClick={() => router.push('/crew')} style={{ padding: '12px 28px', background: `linear-gradient(135deg,${C.accent},#ea580c)`, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Open Crew Manager →</button>
             </div>
           )}
-          {activeTab === 'payments' && (() => {
-            return (
-              <div>
+          {activeTab === 'payments' && (
+            <div>
                 <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Accounts Receivable</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 32 }}>
                   {[
@@ -1110,9 +1111,8 @@ export default function AdminPage() {
                 </div>
                 <p style={{ color: C.muted, fontSize: 14 }}>Per-job payment logging is available in the Job Manager → open any job → Financials section.</p>
                 <button onClick={() => router.push('/jobs')} style={{ marginTop: 16, padding: '10px 20px', background: `linear-gradient(135deg,${C.accent},#ea580c)`, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Open Job Manager →</button>
-              </div>
-            )
-          })()}
+            </div>
+          )}
           {activeTab === 'documents' && (
             <ComingSoon icon="📄" title="Documents" desc="Store scope sheets, certificates of completion, insurance docs, and contracts." />
           )}
