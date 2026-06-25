@@ -1575,7 +1575,7 @@ export default function JobsPage() {
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'system-ui, sans-serif' }}>
 
       {/* ── Sidebar ── */}
-      <div style={{
+      <div className='sc-sidebar' style={{
         width: sidebarW, minHeight: '100vh', background: '#0c0e14',
         borderRight: `1px solid ${C.border}`,
         display: 'flex', flexDirection: 'column',
@@ -1694,7 +1694,7 @@ export default function JobsPage() {
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ marginLeft: sidebarW, flex: 1, minHeight: '100vh', transition: 'margin-left 0.2s', display: 'flex', flexDirection: 'column' }}>
+      <div className='sc-main' style={{ marginLeft: sidebarW, flex: 1, minHeight: '100vh', transition: 'margin-left 0.2s', display: 'flex', flexDirection: 'column' }}>
 
         <div style={{
           height: '56px', background: '#0c0e14', borderBottom: `1px solid ${C.border}`,

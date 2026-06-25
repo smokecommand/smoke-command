@@ -531,7 +531,7 @@ export default function AdminPage() {
       </div>
 
       {/* ── Main content ──────────────────────────────────────────────────── */}
-      <div style={{ marginLeft: sidebarW, flex: 1, minHeight: '100vh', transition: 'margin-left 0.2s', display: 'flex', flexDirection: 'column' }}>
+      <div className="sc-main" style={{ marginLeft: sidebarW, flex: 1, minHeight: '100vh', transition: 'margin-left 0.2s', display: 'flex', flexDirection: 'column' }}>
 
         {/* Top bar */}
         <div style={{
@@ -551,7 +551,7 @@ export default function AdminPage() {
         </div>
 
         {/* Tab content */}
-        <div style={{ flex: 1, padding: '28px', overflowY: 'auto' }}>
+        <div className="sc-content" style={{ flex: 1, padding: '28px', overflowY: 'auto' }}>
 
           {/* ── DASHBOARD ── */}
           {activeTab === 'dashboard' && (

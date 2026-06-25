@@ -96,3 +96,119 @@ button, a, input, select, textarea {
     padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — < 768px
+═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* Hide the fixed sidebar on mobile */
+  .sc-sidebar { display: none !important; }
+
+  /* Remove sidebar margin — full width content */
+  .sc-main { margin-left: 0 !important; }
+
+  /* Show mobile bottom nav */
+  .sc-mobile-nav { display: flex !important; }
+
+  /* Add bottom padding so content clears the nav bar */
+  .sc-content { padding-bottom: 80px !important; }
+
+  /* Top bar: smaller padding, hide non-essential items */
+  .sc-topbar { padding: 0 16px !important; }
+  .sc-topbar-title { font-size: 14px !important; }
+
+  /* Cards: single column */
+  .sc-grid-3,
+  .sc-grid-4,
+  .sc-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Job pipeline: horizontal scroll */
+  .sc-pipeline {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 16px !important;
+  }
+
+  /* Tables: scroll horizontally */
+  .sc-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Detail panels: full screen on mobile */
+  .sc-detail-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  /* Forms: full width inputs */
+  .sc-form-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  /* Bigger tap targets */
+  button, a, [role="button"] {
+    min-height: 40px;
+  }
+
+  /* District badge — hide on mobile to save space */
+  .sc-district-badge { display: none !important; }
+
+  /* Stats row: 2-column grid on mobile */
+  .sc-stats-row {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Job cards: full width, bigger text */
+  .sc-job-card {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+
+  /* Hide less-important columns in list view */
+  .sc-col-hide-mobile { display: none !important; }
+
+  /* Slide panels: full screen */
+  div[style*="width: 560px"],
+  div[style*="width:560px"] {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border) !important;
+    top: 0 !important;
+  }
+
+  /* Admin sidebar hidden, content full-width */
+  div[style*="margin-left: 220px"],
+  div[style*="margin-left:220px"],
+  div[style*="marginLeft: 220"],
+  div[style*="marginLeft:220"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Compress padding on mobile */
+  div[style*="padding: 32px"],
+  div[style*="padding:32px"] {
+    padding: 16px !important;
+  }
+
+  div[style*="padding: 28px"],
+  div[style*="padding:28px"] {
+    padding: 16px !important;
+  }
+
+  /* Stage pipeline columns: min-width so they scroll horizontal */
+  div[style*="minWidth: 220px"] {
+    min-width: 200px !important;
+  }
+}
+
+/* Hide mobile nav on desktop */
+.sc-mobile-nav { display: none; }
