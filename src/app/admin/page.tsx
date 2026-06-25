@@ -1090,14 +1090,89 @@ export default function AdminPage() {
               <button onClick={() => router.push('/crew')} style={{ padding: '12px 28px', background: `linear-gradient(135deg,${C.accent},#ea580c)`, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Open Crew Manager →</button>
             </div>
           )}
-          {activeTab === 'payments' && (
-            <ComingSoon icon="💰" title="Payments" desc="Track invoices, insurance claims, and payment collections." />
-          )}
+          {activeTab === 'payments' && (() => {
+            return (
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Accounts Receivable</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 32 }}>
+                  {[
+                    { label: 'Total Approved', value: `$${((jobStats?.pipelineValue ?? 0) + 0).toLocaleString()}`, color: C.text },
+                    { label: 'Total Collected', value: '$0', color: C.success },
+                    { label: 'Outstanding', value: `$${(jobStats?.pipelineValue ?? 0).toLocaleString()}`, color: C.warning },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 24px' }}>
+                      <div style={{ fontSize: 12, color: C.muted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{s.label}</div>
+                      <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ color: C.muted, fontSize: 14 }}>Per-job payment logging is available in the Job Manager → open any job → Financials section.</p>
+                <button onClick={() => router.push('/jobs')} style={{ marginTop: 16, padding: '10px 20px', background: `linear-gradient(135deg,${C.accent},#ea580c)`, border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Open Job Manager →</button>
+              </div>
+            )
+          })()}
           {activeTab === 'documents' && (
             <ComingSoon icon="📄" title="Documents" desc="Store scope sheets, certificates of completion, insurance docs, and contracts." />
           )}
           {activeTab === 'reports' && (
-            <ComingSoon icon="📈" title="Reports" desc="Revenue reports, rep performance, lead conversion, and compliance summaries." />
+            <div>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Reports & KPIs</h2>
+              {/* Revenue Summary */}
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>💰 Revenue Summary</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
+                  {[
+                    { label: 'Pipeline Value', value: `$${(jobStats?.pipelineValue ?? 0).toLocaleString()}`, color: C.accent },
+                    { label: 'Active Jobs', value: jobStats?.active ?? 0, color: C.text },
+                    { label: 'Closed Jobs', value: jobStats?.byStatus?.closed ?? 0, color: C.success },
+                    { label: 'Avg Job Value', value: jobStats?.total ? `$${Math.round((jobStats.pipelineValue ?? 0) / jobStats.total).toLocaleString()}` : '$0', color: C.warning },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: C.bg, borderRadius: 10, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{s.label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Job Stage Breakdown */}
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24, marginBottom: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>📋 Jobs by Stage</div>
+                {Object.entries({
+                  inspection_scheduled: 'Inspection Scheduled', scope_written: 'Scope Written',
+                  work_auth_signed: 'Work Auth Signed', equipment_in: 'Equipment In',
+                  mitigation_active: 'Mitigation Active', hygienist_clearance: 'Hygienist Clearance',
+                  reconstruction: 'Reconstruction', billing: 'Billing', closed: 'Closed',
+                }).map(([key, label]) => {
+                  const count = jobStats?.byStatus?.[key] ?? 0
+                  const max = Math.max(...Object.values(jobStats?.byStatus ?? {}).map(Number), 1)
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                      <div style={{ width: 160, fontSize: 13, color: C.muted, flexShrink: 0 }}>{label}</div>
+                      <div style={{ flex: 1, height: 8, background: C.bg, borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ width: `${(count / max) * 100}%`, height: '100%', background: `linear-gradient(90deg,${C.accent},#ef4444)`, borderRadius: 4 }} />
+                      </div>
+                      <div style={{ width: 24, textAlign: 'right', fontSize: 13, fontWeight: 700, color: count > 0 ? C.text : C.muted }}>{count}</div>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Lead Conversion */}
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 24 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>🔥 Lead Conversion</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+                  {[
+                    { label: 'Total Leads', value: adminLeads.length, color: C.text },
+                    { label: 'Signed', value: adminLeads.filter(l => l.status === 'signed').length, color: C.success },
+                    { label: 'Conversion Rate', value: adminLeads.length > 0 ? `${Math.round((adminLeads.filter(l => l.status === 'signed').length / adminLeads.length) * 100)}%` : '0%', color: C.accent },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: C.bg, borderRadius: 10, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{s.label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
           {activeTab === 'franchise' && (
             <ComingSoon icon="💳" title="Franchise Billing" desc="Royalty tracking, franchise fee invoicing, and territory financials." />

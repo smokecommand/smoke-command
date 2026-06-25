@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { Job, JobStatus, PhaseLogEntry, ChecklistItem, StageChecklists } from '@/lib/supabase'
@@ -746,6 +746,65 @@ function ARBlock({ job, onUpdate }: {
   )
 }
 
+// ─── Photo Upload ────────────────────────────────────────────────────────────
+function PhotoUpload({ jobId }: { jobId: string }) {
+  const [photos, setPhotos] = useState<{ name: string; url: string; label: string; ts: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [label, setLabel] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `jobs/${jobId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('job-photos').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data: urlData } = supabase.storage.from('job-photos').getPublicUrl(path)
+      const newPhoto = { name: file.name, url: urlData.publicUrl, label: label || 'General', ts: new Date().toLocaleString() }
+      setPhotos(prev => [...prev, newPhoto])
+      setLabel('')
+    }
+    setUploading(false)
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center' }}>
+        <input
+          placeholder="Label (e.g. Living Room, HVAC, Attic)"
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          style={{ flex: 1, padding: '8px 12px', background: '#0f1117', border: '1px solid #2a2d35', borderRadius: 7, color: '#f4f4f5', fontSize: 13 }}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          style={{ padding: '8px 16px', background: '#f97316', border: 'none', borderRadius: 7, color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, whiteSpace: 'nowrap' }}>
+          {uploading ? 'Uploading…' : '📷 Add Photo'}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUpload} />
+      </div>
+      {photos.length === 0 ? (
+        <div style={{ fontSize: 13, color: '#71717a', padding: '16px 0' }}>No photos yet. Techs can upload from their phone — PMs see them instantly.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+          {photos.map((p, i) => (
+            <div key={i} style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid #2a2d35', background: '#0f1117' }}>
+              <img src={p.url} alt={p.label} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block' }} />
+              <div style={{ padding: '6px 8px' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#f4f4f5' }}>{p.label}</div>
+                <div style={{ fontSize: 10, color: '#71717a' }}>{p.ts}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Job Detail Panel ────────────────────────────────────────────────────────
 function JobDetailPanel({ job, open, onClose, onUpdate }: {
   job: Job | null
@@ -1033,6 +1092,11 @@ function JobDetailPanel({ job, open, onClose, onUpdate }: {
               </div>
             </Section>
           )}
+
+          {/* Photo Documentation */}
+          <Section title="📸 PHOTO DOCUMENTATION">
+            <PhotoUpload jobId={job.id} />
+          </Section>
 
           {/* Notes */}
           <Section title="NOTES">
