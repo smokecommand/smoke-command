@@ -1,19 +1,35 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import PWARegister from "@/components/PWARegister";
 
 export const metadata: Metadata = {
   title: "Smoke Command",
-  description: "Every fire is a live lead.",
+  description: "Restore Medics USA — Field Operations Platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Smoke Command",
+  },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  themeColor: "#f97316",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body style={{ margin: 0, minHeight: '100vh', background: '#0f1117', color: '#f4f4f5' }}>
+        <PWARegister />
         {children}
       </body>
     </html>

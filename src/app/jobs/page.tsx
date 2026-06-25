@@ -145,6 +145,29 @@ const STAGES: { status: JobStatus; label: string; icon: string; color: string }[
   { status: 'closed',               label: 'Closed',               icon: '✔️', color: '#71717a' },
 ]
 
+// Library stages — add-on stages beyond the 8 base
+const STAGE_LIBRARY = [
+  { id: 'ductwork_inspection', label: 'Ductwork Inspection', icon: '🌀', category: 'Assessment' },
+  { id: 'ductwork_replacement', label: 'Ductwork Replacement', icon: '🔧', category: 'Remediation' },
+  { id: 'encapsulation', label: 'Encapsulation', icon: '🛡️', category: 'Remediation' },
+  { id: 'hygienist_pre_test', label: 'Hygienist Pre-Test', icon: '🔬', category: 'Testing' },
+  { id: 'lab_wait', label: 'Lab Wait (Results Pending)', icon: '⏳', category: 'Testing' },
+  { id: 'demo', label: 'Demo / Drywall Removal', icon: '🔨', category: 'Reconstruction' },
+  { id: 'insulation', label: 'Insulation', icon: '🏠', category: 'Reconstruction' },
+  { id: 'seal_prime_paint', label: 'Seal / Prime / Paint', icon: '🎨', category: 'Reconstruction' },
+  { id: 'contents_pack_out', label: 'Contents Pack-Out (3rd Party)', icon: '📦', category: 'Logistics' },
+  { id: 'adjuster_meeting', label: 'Adjuster Meeting / Inspection', icon: '👔', category: 'Insurance' },
+  { id: 'supplemental_claim', label: 'Supplemental Claim', icon: '📋', category: 'Insurance' },
+  { id: 'sub_electrical', label: 'Electrical (Sub)', icon: '⚡', category: 'Subcontractors' },
+  { id: 'sub_hvac', label: 'HVAC Replacement (Sub)', icon: '❄️', category: 'Subcontractors' },
+  { id: 'sub_flooring', label: 'Flooring (Sub)', icon: '🪵', category: 'Subcontractors' },
+  { id: 'sub_drywall', label: 'Drywall (Sub)', icon: '🧱', category: 'Subcontractors' },
+  { id: 'sub_plumbing', label: 'Plumbing (Sub)', icon: '🔩', category: 'Subcontractors' },
+  { id: 'chain_of_custody', label: 'Chain of Custody / Lab Submission', icon: '🧪', category: 'Documentation' },
+  { id: 'hover_sketch', label: 'Hover Sketch', icon: '📐', category: 'Documentation' },
+  { id: 'xactimate_estimate', label: 'Xactimate Estimate', icon: '💻', category: 'Documentation' },
+]
+
 const fmt$ = (n: number | null | undefined) =>
   n == null ? '—' : '$' + n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
@@ -746,6 +769,89 @@ function ARBlock({ job, onUpdate }: {
   )
 }
 
+// ─── Shared Section wrapper ─────────────────────────────────────────────────────
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div style={{ marginBottom: '24px' }}>
+    <div style={{ fontSize: '11px', fontWeight: '700', color: '#71717a', letterSpacing: '0.1em', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #2a2d35', textTransform: 'uppercase' }}>{title}</div>
+    {children}
+  </div>
+)
+
+// ─── Add-On Stages ────────────────────────────────────────────────────────
+function AddOnStages({ job, onUpdate }: { job: Job; onUpdate: (j: Job) => void }) {
+  const [showLibrary, setShowLibrary] = useState(false)
+  const [customName, setCustomName] = useState('')
+  const stages: { id: string; label: string; icon: string; done: boolean }[] = job.extra_stages ?? []
+
+  const save = async (updated: typeof stages) => {
+    const { data, error } = await supabase.from('jobs').update({ extra_stages: updated }).eq('id', job.id).select().single()
+    if (!error && data) onUpdate(data as Job)
+  }
+
+  const addLibrary = (item: typeof STAGE_LIBRARY[0]) => {
+    if (stages.find(s => s.id === item.id)) return
+    save([...stages, { id: item.id, label: item.label, icon: item.icon, done: false }])
+    setShowLibrary(false)
+  }
+
+  const addCustom = () => {
+    if (!customName.trim()) return
+    const id = `custom_${Date.now()}`
+    save([...stages, { id, label: customName.trim(), icon: '⭐', done: false }])
+    setCustomName('')
+  }
+
+  const toggle = (id: string) => {
+    save(stages.map(s => s.id === id ? { ...s, done: !s.done } : s))
+  }
+
+  const remove = (id: string) => save(stages.filter(s => s.id !== id))
+
+  return (
+    <Section title="📋 ADD-ON STAGES">
+      {stages.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+          {stages.map(s => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: C.bg, borderRadius: 8, border: `1px solid ${s.done ? C.success : C.border}` }}>
+              <input type="checkbox" checked={s.done} onChange={() => toggle(s.id)} style={{ width: 16, height: 16, accentColor: C.success, cursor: 'pointer' }} />
+              <span style={{ fontSize: 16 }}>{s.icon}</span>
+              <span style={{ flex: 1, fontSize: 13, color: s.done ? C.muted : C.text, textDecoration: s.done ? 'line-through' : 'none' }}>{s.label}</span>
+              <button onClick={() => remove(s.id)} style={{ background: 'none', border: 'none', color: C.danger, cursor: 'pointer', fontSize: 16, padding: 0 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => setShowLibrary(!showLibrary)} style={{ padding: '7px 14px', background: 'rgba(249,115,22,0.1)', border: `1px solid rgba(249,115,22,0.3)`, borderRadius: 7, color: C.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          + From Library
+        </button>
+        <input value={customName} onChange={e => setCustomName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustom()}
+          placeholder="Custom stage name..."
+          style={{ flex: 1, padding: '7px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 7, color: C.text, fontSize: 12 }} />
+        <button onClick={addCustom} disabled={!customName.trim()} style={{ padding: '7px 12px', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, color: C.muted, fontSize: 12, cursor: 'pointer' }}>Add</button>
+      </div>
+      {showLibrary && (
+        <div style={{ marginTop: 12, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12 }}>
+          <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Stage Library</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {STAGE_LIBRARY.map(item => {
+              const already = stages.some(s => s.id === item.id)
+              return (
+                <button key={item.id} onClick={() => addLibrary(item)} disabled={already}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: already ? 'transparent' : C.surface, border: 'none', borderRadius: 7, cursor: already ? 'default' : 'pointer', textAlign: 'left', opacity: already ? 0.4 : 1 }}>
+                  <span>{item.icon}</span>
+                  <span style={{ fontSize: 13, color: C.text }}>{item.label}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: C.muted }}>{item.category}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </Section>
+  )
+}
+
 // ─── Photo Upload ────────────────────────────────────────────────────────────
 function PhotoUpload({ jobId }: { jobId: string }) {
   const [photos, setPhotos] = useState<{ name: string; url: string; label: string; ts: string }[]>([])
@@ -860,20 +966,7 @@ function JobDetailPanel({ job, open, onClose, onUpdate }: {
     if (!error && data) { onUpdate(data as Job); setStatusChanging(false); setNewStatus('') }
   }
 
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{
-        fontSize: '11px', fontWeight: '700', color: C.muted,
-        letterSpacing: '0.1em', marginBottom: '12px', paddingBottom: '8px',
-        borderBottom: `1px solid ${C.border}`,
-      }}>
-        {title}
-      </div>
-      {children}
-    </div>
-  )
-
-  const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
+    const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div style={{ marginBottom: '10px' }}>
       <div style={{ fontSize: '11px', color: C.muted, marginBottom: '2px' }}>{label}</div>
       <div style={{ fontSize: '13px', color: value ? C.text : C.muted }}>
@@ -981,6 +1074,9 @@ function JobDetailPanel({ job, open, onClose, onUpdate }: {
           <Section title="📋 STAGE CHECKLIST">
             <StageChecklist job={job} onUpdate={onUpdate} />
           </Section>
+
+          {/* Add-On Stages */}
+          <AddOnStages job={job} onUpdate={onUpdate} />
 
           {/* Property & Homeowner */}
           <Section title="PROPERTY & HOMEOWNER">

@@ -137,6 +137,7 @@ export type Job = {
   notes: string | null
   phase_log: PhaseLogEntry[]
   stage_checklists: StageChecklists
+  extra_stages: { id: string; label: string; icon: string; done: boolean }[]
   created_by: string | null
   created_at: string
   updated_at: string
