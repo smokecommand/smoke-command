@@ -81,6 +81,7 @@ export type Lead = {
   notes: string | null
   touchpoints: Touchpoint[]
   converted_job_id: string | null
+  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -136,6 +137,7 @@ export type Job = {
   stage_checklists: StageChecklists
   extra_stages: { id: string; label: string; icon: string; done: boolean }[]
   created_by: string | null
+  deleted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -156,5 +158,6 @@ export type FireLead = {
   assigned_to: string | null
   doors_knocked: number
   doors_total: number
+  deleted_at: string | null
   created_at: string
 }
