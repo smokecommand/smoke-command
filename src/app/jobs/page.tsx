@@ -938,9 +938,6 @@ function JobDetailPanel({ job, open, onClose, onUpdate }: {
   const stage = STAGES.find(s => s.status === job.status)
   const days = daysOn(job.start_date)
   const totalPipeline = (job.xactimate_estimate ?? 0)
-  const patriotSplit = totalPipeline * (job.split_patriot_pct / 100)
-  const rmSplit = totalPipeline * (job.split_restoremedics_pct / 100)
-  const paSplit = totalPipeline * (job.split_pa_pct / 100)
 
   const saveNotes = async () => {
     setSaving(true)
@@ -1105,29 +1102,6 @@ function JobDetailPanel({ job, open, onClose, onUpdate }: {
           {/* ── FINANCIALS with AR ── */}
           <Section title="FINANCIALS">
             <ARBlock job={job} onUpdate={onUpdate} />
-            <div style={{ marginTop: '16px' }}>
-              <div style={{
-                background: C.bg, borderRadius: '10px', padding: '14px 16px',
-                border: `1px solid ${C.border}`,
-              }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: C.muted, marginBottom: '10px' }}>REVENUE SPLIT</div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {[
-                    { label: `Patriot (${job.split_patriot_pct}%)`, value: patriotSplit, color: C.accent },
-                    { label: `Restore Medics (${job.split_restoremedics_pct}%)`, value: rmSplit, color: '#3b82f6' },
-                    { label: `PA (${job.split_pa_pct}%)`, value: paSplit, color: '#8b5cf6' },
-                  ].map(s => (
-                    <div key={s.label} style={{
-                      background: C.surface, border: `1px solid ${C.border}`, borderRadius: '8px',
-                      padding: '10px 14px', flex: '1', minWidth: '120px',
-                    }}>
-                      <div style={{ fontSize: '11px', color: C.muted, marginBottom: '3px' }}>{s.label}</div>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: s.color }}>{fmt$(s.value)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </Section>
 
           {/* Crew & Equipment */}
@@ -1850,3 +1824,4 @@ export default function JobsPage() {
     </div>
   )
 }
+
