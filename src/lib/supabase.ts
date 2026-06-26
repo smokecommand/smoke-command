@@ -111,9 +111,6 @@ export type Job = {
   // Financials
   xactimate_estimate: number | null
   amount_collected: number
-  split_patriot_pct: number
-  split_restoremedics_pct: number
-  split_pa_pct: number
   // Crew
   lead_tech_id: string | null
   assigned_crew: string[]
