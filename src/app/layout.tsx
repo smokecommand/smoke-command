@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PWARegister from "@/components/PWARegister";
-import MobileNav from "@/components/MobileNav";
 
 export const metadata: Metadata = {
   title: "Smoke Command",
@@ -38,7 +37,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, minHeight: '100vh', background: '#0f1117', color: '#f4f4f5' }}>
         <PWARegister />
         {children}
-        <MobileNav />
       </body>
     </html>
   );
