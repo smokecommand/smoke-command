@@ -321,7 +321,13 @@ function PipelineView({ jobs, onSelectJob }: { jobs: Job[]; onSelectJob: (j: Job
 }
 
 // ─── List View ───────────────────────────────────────────────────────────────
-function ListView({ jobs, onSelectJob }: { jobs: Job[]; onSelectJob: (j: Job) => void }) {
+function ListView({ jobs, onSelectJob, onArchive, onRestore, showArchived }: {
+  jobs: Job[];
+  onSelectJob: (j: Job) => void;
+  onArchive?: (job: Job) => void;
+  onRestore?: (job: Job) => void;
+  showArchived?: boolean;
+}) {
   return (
     <div style={{
       background: C.surface, border: `1px solid ${C.border}`,
@@ -345,10 +351,12 @@ function ListView({ jobs, onSelectJob }: { jobs: Job[]; onSelectJob: (j: Job) =>
               const stage = STAGES.find(s => s.status === job.status)
               const days = daysOn(job.start_date)
               const outstanding = (job.xactimate_estimate ?? 0) - (job.amount_collected ?? 0)
+              const isArchived = !!job.deleted_at
               return (
                 <tr key={job.id} style={{
                   borderBottom: idx < jobs.length - 1 ? `1px solid ${C.border}` : 'none',
                   cursor: 'pointer',
+                  opacity: isArchived ? 0.65 : 1,
                 }}
                   onClick={() => onSelectJob(job)}
                   onMouseEnter={e => (e.currentTarget.style.background = '#1f2330')}
@@ -391,14 +399,31 @@ function ListView({ jobs, onSelectJob }: { jobs: Job[]; onSelectJob: (j: Job) =>
                   <td style={{ padding: '12px 14px', color: C.muted, fontSize: '12px', whiteSpace: 'nowrap' }}>
                     {days != null ? `Day ${days}` : '—'}
                   </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <button style={{
+                  <td style={{ padding: '12px 14px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <button onClick={e => { e.stopPropagation(); onSelectJob(job) }} style={{
                       padding: '5px 12px', background: 'none',
                       border: `1px solid ${C.border}`, borderRadius: '6px',
                       color: C.accent, fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                     }}>
                       Open →
                     </button>
+                    {isArchived && onRestore ? (
+                      <button onClick={e => { e.stopPropagation(); onRestore(job) }} style={{
+                        padding: '5px 10px', background: 'none',
+                        border: `1px solid ${C.success}60`, borderRadius: '6px',
+                        color: C.success, fontSize: '11px', cursor: 'pointer',
+                      }}>
+                        ♻️ Restore
+                      </button>
+                    ) : onArchive ? (
+                      <button onClick={e => { e.stopPropagation(); onArchive(job) }} style={{
+                        padding: '5px 10px', background: 'none',
+                        border: `1px solid ${C.border}`, borderRadius: '6px',
+                        color: C.muted, fontSize: '11px', cursor: 'pointer',
+                      }}>
+                        🗃️ Archive
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               )
@@ -407,7 +432,7 @@ function ListView({ jobs, onSelectJob }: { jobs: Job[]; onSelectJob: (j: Job) =>
         </table>
         {jobs.length === 0 && (
           <div style={{ padding: '48px', textAlign: 'center', color: C.muted, fontSize: '13px' }}>
-            No jobs found.
+            {showArchived ? 'No archived jobs.' : 'No jobs found.'}
           </div>
         )}
       </div>
@@ -1477,9 +1502,23 @@ export default function JobsPage() {
   const [userRole, setUserRole] = useState<string>('sales_rep')
   const [userDistrictId, setUserDistrictId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivedCount, setArchivedCount] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
 
-  const loadJobs = useCallback(async (role: string, districtId: string | null, uid: string | null) => {
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const loadJobs = useCallback(async (role: string, districtId: string | null, uid: string | null, archived = false) => {
     let query = supabase.from('jobs').select('*').order('created_at', { ascending: false })
+    // Filter soft-deleted unless viewing archive
+    if (!archived) {
+      query = query.is('deleted_at', null)
+    } else {
+      query = query.not('deleted_at', 'is', null)
+    }
     // master_admin sees everything; others scoped to their district
     if (role !== 'master_admin' && districtId) {
       query = query.eq('district_id', districtId)
@@ -1491,6 +1530,13 @@ export default function JobsPage() {
     const { data, error } = await query
     if (data) setJobs(data as Job[])
     if (error) console.error('Failed to load jobs:', error.message)
+    // Also count archived jobs for the toggle label
+    if (!archived) {
+      let countQuery = supabase.from('jobs').select('id', { count: 'exact', head: true }).not('deleted_at', 'is', null)
+      if (role !== 'master_admin' && districtId) countQuery = countQuery.eq('district_id', districtId)
+      const { count } = await countQuery
+      setArchivedCount(count ?? 0)
+    }
   }, [])
 
   useEffect(() => {
@@ -1503,7 +1549,7 @@ export default function JobsPage() {
       setUserRole(role)
       setUserDistrictId(districtId)
       setUserId(user.id)
-      await loadJobs(role, districtId, user.id)
+      await loadJobs(role, districtId, user.id, false)
       setLoading(false)
     }
     init()
@@ -1517,6 +1563,31 @@ export default function JobsPage() {
   const handleJobCreated = (newJob: Job) => {
     setJobs(prev => [newJob, ...prev])
     setSelectedJob(newJob)
+  }
+
+  const handleArchiveJob = async (job: Job) => {
+    const { error } = await supabase.from('jobs').update({ deleted_at: new Date().toISOString() }).eq('id', job.id)
+    if (!error) {
+      setJobs(prev => prev.filter(j => j.id !== job.id))
+      setArchivedCount(c => c + 1)
+      if (selectedJob?.id === job.id) setSelectedJob(null)
+      showToast('Job archived — can be restored from the archive')
+    }
+  }
+
+  const handleRestoreJob = async (job: Job) => {
+    const { error } = await supabase.from('jobs').update({ deleted_at: null }).eq('id', job.id)
+    if (!error) {
+      setJobs(prev => prev.filter(j => j.id !== job.id))
+      setArchivedCount(c => Math.max(0, c - 1))
+      showToast('Job restored')
+    }
+  }
+
+  const handleToggleArchived = async () => {
+    const next = !showArchived
+    setShowArchived(next)
+    await loadJobs(userRole, userDistrictId, userId, next)
   }
 
   const filteredJobs = statusFilter === 'all' ? jobs : jobs.filter(j => j.status === statusFilter)
@@ -1748,7 +1819,18 @@ export default function JobsPage() {
                 ))}
               </div>
 
-              {viewMode === 'list' && (
+              {/* Archive toggle */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                <button onClick={handleToggleArchived} style={{
+                  padding: '4px 12px', background: 'none',
+                  border: `1px solid ${C.border}`, borderRadius: '99px',
+                  color: showArchived ? C.accent : C.muted, fontSize: '12px', cursor: 'pointer',
+                }}>
+                  {showArchived ? '📂 Show Active Jobs' : `🗃️ Show archived (${archivedCount})`}
+                </button>
+              </div>
+
+              {!showArchived && viewMode === 'list' && (
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
                   <button onClick={() => setStatusFilter('all')} style={{
                     padding: '5px 13px', borderRadius: '20px',
@@ -1777,10 +1859,16 @@ export default function JobsPage() {
                 </div>
               )}
 
-              {viewMode === 'pipeline' ? (
+              {viewMode === 'pipeline' && !showArchived ? (
                 <PipelineView jobs={jobs} onSelectJob={setSelectedJob} />
               ) : (
-                <ListView jobs={filteredJobs} onSelectJob={setSelectedJob} />
+                <ListView
+                  jobs={showArchived ? jobs : filteredJobs}
+                  onSelectJob={setSelectedJob}
+                  onArchive={showArchived ? undefined : handleArchiveJob}
+                  onRestore={showArchived ? handleRestoreJob : undefined}
+                  showArchived={showArchived}
+                />
               )}
             </>
           )}
@@ -1821,6 +1909,18 @@ export default function JobsPage() {
         onClose={() => setNewJobOpen(false)}
         onCreated={handleJobCreated}
       />
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+          padding: '12px 20px', color: C.text, fontSize: '13px', fontWeight: '600',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.4)', zIndex: 9999, whiteSpace: 'nowrap',
+        }}>
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
