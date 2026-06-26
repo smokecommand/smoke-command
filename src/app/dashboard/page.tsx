@@ -106,7 +106,7 @@ export default function DashboardPage() {
       setUserEmail(session.user.email || '')
 
       const { data, error } = await supabase
-        .from('fire_leads').select('*').order('created_at', { ascending: false })
+        .from('fire_leads').select('*').is('deleted_at', null).order('created_at', { ascending: false })
       if (data) setLeads(data)
       if (error) console.error('Failed to load leads:', error.message)
       setLoading(false)
