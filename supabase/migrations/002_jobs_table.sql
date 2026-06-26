@@ -44,9 +44,6 @@ CREATE TABLE IF NOT EXISTS jobs (
   -- Financials
   xactimate_estimate NUMERIC(10,2),
   amount_collected NUMERIC(10,2) DEFAULT 0,
-  split_patriot_pct NUMERIC(5,2) DEFAULT 70,
-  split_restoremedics_pct NUMERIC(5,2) DEFAULT 20,
-  split_pa_pct NUMERIC(5,2) DEFAULT 10,
   
   -- Crew
   lead_tech_id UUID,
