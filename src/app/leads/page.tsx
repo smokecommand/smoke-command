@@ -734,18 +734,36 @@ export default function LeadsPage() {
   const [createJobOpen, setCreateJobOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list')
 
-  const loadLeads = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('leads').select('*').order('created_at', { ascending: false })
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivedCount, setArchivedCount] = useState(0)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const loadLeads = useCallback(async (archived = false) => {
+    let query = supabase.from('leads').select('*').order('created_at', { ascending: false })
+    if (!archived) {
+      query = query.is('deleted_at', null)
+    } else {
+      query = query.not('deleted_at', 'is', null)
+    }
+    const { data, error } = await query
     if (data) setLeads(data as Lead[])
     if (error) console.error('Failed to load leads:', error.message)
+    if (!archived) {
+      const { count } = await supabase.from('leads').select('id', { count: 'exact', head: true }).not('deleted_at', 'is', null)
+      setArchivedCount(count ?? 0)
+    }
   }, [])
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      await loadLeads()
+      await loadLeads(false)
       setLoading(false)
     }
     init()
@@ -759,6 +777,31 @@ export default function LeadsPage() {
   const handleLeadCreated = (l: Lead) => {
     setLeads(prev => [l, ...prev])
     setSelectedLead(l)
+  }
+
+  const handleArchiveLead = async (lead: Lead) => {
+    const { error } = await supabase.from('leads').update({ deleted_at: new Date().toISOString() }).eq('id', lead.id)
+    if (!error) {
+      setLeads(prev => prev.filter(l => l.id !== lead.id))
+      setArchivedCount(c => c + 1)
+      if (selectedLead?.id === lead.id) setSelectedLead(null)
+      showToast('Lead archived — can be restored from the archive')
+    }
+  }
+
+  const handleRestoreLead = async (lead: Lead) => {
+    const { error } = await supabase.from('leads').update({ deleted_at: null }).eq('id', lead.id)
+    if (!error) {
+      setLeads(prev => prev.filter(l => l.id !== lead.id))
+      setArchivedCount(c => Math.max(0, c - 1))
+      showToast('Lead restored')
+    }
+  }
+
+  const handleToggleArchived = async () => {
+    const next = !showArchived
+    setShowArchived(next)
+    await loadLeads(next)
   }
 
   const handleCreateJob = (lead: Lead) => {
@@ -958,6 +1001,17 @@ export default function LeadsPage() {
 
           {viewMode === 'list' && (
             <>
+              {/* Archive toggle */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                <button onClick={handleToggleArchived} style={{
+                  padding: '4px 12px', background: 'none',
+                  border: `1px solid ${C.border}`, borderRadius: '99px',
+                  color: showArchived ? C.accent : C.muted, fontSize: '12px', cursor: 'pointer',
+                }}>
+                  {showArchived ? '📂 Show Active Leads' : `🗃️ Show archived (${archivedCount})`}
+                </button>
+              </div>
+
               {/* Lead list */}
               <div style={{
                 background: C.surface, border: `1px solid ${C.border}`,
@@ -977,14 +1031,16 @@ export default function LeadsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredLeads.map((lead, idx) => {
+                      {(showArchived ? leads : filteredLeads).map((lead, idx) => {
                         const days = daysSince(lead.date_contacted)
+                        const displayList = showArchived ? leads : filteredLeads
                         return (
                           <tr
                             key={lead.id}
                             style={{
-                              borderBottom: idx < filteredLeads.length - 1 ? `1px solid ${C.border}` : 'none',
+                              borderBottom: idx < displayList.length - 1 ? `1px solid ${C.border}` : 'none',
                               cursor: 'pointer',
+                              opacity: lead.deleted_at ? 0.65 : 1,
                             }}
                             onClick={() => setSelectedLead(lead)}
                             onMouseEnter={e => (e.currentTarget.style.background = '#1f2330')}
@@ -1019,23 +1075,40 @@ export default function LeadsPage() {
                             <td style={{ padding: '12px 14px', fontSize: '12px', color: C.muted }}>
                               {(lead.touchpoints ?? []).length}
                             </td>
-                            <td style={{ padding: '12px 14px' }}>
-                              <button style={{
+                            <td style={{ padding: '12px 14px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <button onClick={e => { e.stopPropagation(); setSelectedLead(lead) }} style={{
                                 padding: '5px 12px', background: 'none',
                                 border: `1px solid ${C.border}`, borderRadius: '6px',
                                 color: C.accent, fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                               }}>
                                 Open →
                               </button>
+                              {showArchived ? (
+                                <button onClick={e => { e.stopPropagation(); handleRestoreLead(lead) }} style={{
+                                  padding: '5px 10px', background: 'none',
+                                  border: `1px solid ${C.success}60`, borderRadius: '6px',
+                                  color: C.success, fontSize: '11px', cursor: 'pointer',
+                                }}>
+                                  ♻️ Restore
+                                </button>
+                              ) : (
+                                <button onClick={e => { e.stopPropagation(); handleArchiveLead(lead) }} style={{
+                                  padding: '5px 10px', background: 'none',
+                                  border: `1px solid ${C.border}`, borderRadius: '6px',
+                                  color: C.muted, fontSize: '11px', cursor: 'pointer',
+                                }}>
+                                  🗃️ Archive
+                                </button>
+                              )}
                             </td>
                           </tr>
                         )
                       })}
                     </tbody>
                   </table>
-                  {filteredLeads.length === 0 && (
+                  {(showArchived ? leads : filteredLeads).length === 0 && (
                     <div style={{ padding: '48px', textAlign: 'center', color: C.muted, fontSize: '13px' }}>
-                      {filter === 'all' ? 'No leads yet. Hit "+ New Lead" to log your first prospect.' : `No ${filter} leads.`}
+                      {showArchived ? 'No archived leads.' : filter === 'all' ? 'No leads yet. Hit "+ New Lead" to log your first prospect.' : `No ${filter} leads.`}
                     </div>
                   )}
                 </div>
@@ -1102,6 +1175,18 @@ export default function LeadsPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: '10px',
+          padding: '12px 20px', color: C.text, fontSize: '13px', fontWeight: '600',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.4)', zIndex: 9999, whiteSpace: 'nowrap',
+        }}>
+          {toast}
         </div>
       )}
     </div>
